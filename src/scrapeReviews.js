@@ -63,23 +63,30 @@ async function extractReviewsFromPage(page, appName, appSlug) {
         const textEl = block.querySelector('[data-truncate-review] [data-truncate-content-copy], [data-truncate-review]');
         let reviewText = '';
         if (textEl) {
-          const p = textEl.querySelector('p');
-          if (p) reviewText = p.innerText.replace(/\s+/g, ' ').trim();
-          else reviewText = textEl.innerText.replace(/\s+/g, ' ').trim();
+          const paragraphs = textEl.querySelectorAll('p');
+          if (paragraphs.length > 0) {
+            reviewText = Array.from(paragraphs)
+              .map(p => p.innerText.replace(/\s+/g, ' ').trim())
+              .filter(t => t.length > 0)
+              .join('\n\n');
+          } else {
+            reviewText = textEl.innerText.replace(/\s+/g, ' ').trim();
+          }
         }
 
         const nameEl = block.querySelector('.tw-text-heading-xs.tw-text-fg-primary span[title]');
         const reviewerName = nameEl ? (nameEl.getAttribute('title') || nameEl.textContent.trim()) : '';
 
-        const sidebar = block.querySelector('.tw-order-1.lg\\:tw-order-1 .tw-space-y-1');
+        const sidebar = block.querySelector('.tw-order-1.lg\\:tw-order-1');
         let reviewerLocation = '';
         let usageDuration = '';
         if (sidebar) {
           const children = Array.from(sidebar.children).filter((el) => el.tagName === 'DIV');
           children.forEach((d) => {
             const t = d.textContent.trim();
-            if (!t || d.querySelector('.tw-text-heading-xs')) return;
-            if (/using the app|year|month|day/.test(t)) usageDuration = t;
+            // Skip the name div (which has the class on itself)
+            if (!t || d.classList.contains('tw-text-heading-xs')) return;
+            if (/using the app|using app|year|month|day/.test(t)) usageDuration = t;
             else reviewerLocation = reviewerLocation || t;
           });
         }
@@ -96,9 +103,15 @@ async function extractReviewsFromPage(page, appName, appSlug) {
           }
           const copyEl = replyBlock.querySelector('[data-truncate-content-copy], [data-reply-id]');
           if (copyEl) {
-            const p = copyEl.querySelector('p');
-            if (p) developerResponse = p.innerText.replace(/\s+/g, ' ').trim();
-            else developerResponse = copyEl.innerText.replace(/\s+/g, ' ').trim();
+            const paragraphs = copyEl.querySelectorAll('p');
+            if (paragraphs.length > 0) {
+              developerResponse = Array.from(paragraphs)
+                .map(p => p.innerText.replace(/\s+/g, ' ').trim())
+                .filter(t => t.length > 0)
+                .join('\n\n');
+            } else {
+              developerResponse = copyEl.innerText.replace(/\s+/g, ' ').trim();
+            }
           }
         }
 
@@ -157,6 +170,17 @@ async function scrapeAppReviews(browser, app, options = {}) {
         });
         await delay(delayMin, delayMax);
       }
+
+      // Expand all truncated reviews by clicking "Show more" buttons
+      await page.evaluate(() => {
+        const showMoreButtons = document.querySelectorAll('[data-truncate-content-toggle]');
+        showMoreButtons.forEach(btn => {
+          if (btn.textContent.includes('Show more') || btn.textContent.includes('more')) {
+            btn.click();
+          }
+        });
+      }).catch(() => {});
+      await delay(500, 1000);
 
       const batch = await extractReviewsFromPage(page, appName, appSlug);
       allReviews.push(...batch);

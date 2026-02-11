@@ -44,13 +44,21 @@ async function extractAppsFromPage(page) {
 }
 
 /**
- * Scroll to bottom to trigger "load more" or lazy content, then collect apps.
+ * Collect apps from paginated search results.
  */
-async function scrollAndCollect(page, maxScrolls = 15) {
+async function collectAllApps(page, baseUrl) {
   const allApps = [];
   const seen = new Set();
+  let pageNum = 1;
+  const maxPages = SEARCH.maxPages;
 
-  for (let i = 0; i < maxScrolls; i++) {
+  while (pageNum <= maxPages) {
+    log(`  Search page ${pageNum}...`);
+    
+    // Scroll to load any lazy content
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await delay(1000, 2000);
+
     const batch = await extractAppsFromPage(page);
     let newCount = 0;
     for (const app of batch) {
@@ -60,16 +68,27 @@ async function scrollAndCollect(page, maxScrolls = 15) {
         newCount++;
       }
     }
-    if (newCount === 0 && batch.length > 0) break; // no new apps
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await delay(1500, 2500);
-    const hasMore = await page.evaluate(() => {
-      const next = document.querySelector('a[rel="next"]');
-      const loadMore = document.querySelector('[data-search-load-more]') ||
-        Array.from(document.querySelectorAll('button')).find(b => /load more/i.test(b.textContent));
-      return !!(next || loadMore);
-    }).catch(() => false);
-    if (!hasMore && newCount === 0) break;
+    log(`  Found ${batch.length} apps (${newCount} new), total: ${allApps.length}`);
+
+    if (newCount === 0 && pageNum > 1) break;
+
+    // Check for next page using config selector
+    const nextPageUrl = await page.evaluate((selector) => {
+      const nextLink = document.querySelector(selector);
+      return nextLink ? nextLink.href : null;
+    }, SEARCH.nextPageLink).catch(() => null);
+
+    if (!nextPageUrl) {
+      log(`  No more pages found.`);
+      break;
+    }
+
+    // Navigate to next page
+    pageNum++;
+    await retry(async () => {
+      await page.goto(nextPageUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+    });
+    await delay(DELAY.minMs, DELAY.maxMs);
   }
 
   return allApps;
@@ -106,9 +125,12 @@ async function discoverApps(options = {}) {
     // Wait for app cards or main content
     await page.waitForSelector('main, [data-app-card-handle-value], .tw-grid', { timeout: 15000 }).catch(() => {});
 
-    let apps = await scrollAndCollect(page);
+    const apps = await collectAllApps(page, url);
+
     if (apps.length === 0) {
-      apps = await extractAppsFromPage(page);
+      log('No apps found. Trying single page extraction...');
+      const singlePage = await extractAppsFromPage(page);
+      apps.push(...singlePage);
     }
 
     const unique = [];

@@ -11,8 +11,9 @@ const SEARCH = {
   appNameAttr: 'data-app-card-name-value',
   appHandleAttr: 'data-app-card-handle-value',
   appLinkAttr: 'data-app-card-app-link-value',
-  /** Load more / pagination on search - optional */
-  loadMoreButton: '[data-search-load-more], button:has-text("Load more"), a[rel="next"]',
+  /** Pagination */
+  nextPageLink: 'a[rel="next"]',
+  maxPages: 50,
 };
 
 const REVIEWS = {

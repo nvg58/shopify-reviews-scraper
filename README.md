@@ -46,8 +46,8 @@ node src/index.js --discover --no-resume
 
 ## Behavior
 
-- **Discovery:** Opens `https://apps.shopify.com/search?q=print+on+demand`, waits for results, scrolls to load more, and collects app name + slug from app cards. Saves to `data/apps.json`.
-- **Reviews:** For each app, opens `https://apps.shopify.com/{slug}/reviews`, reads total count, then paginates with `?page=1`, `?page=2`, … and extracts per-review fields. Saves per-app JSON to `data/reviews/{slug}.json` and updates `data/all_reviews.json` and `data/scraped_app_slugs.json` as it goes.
+- **Discovery:** Opens `https://apps.shopify.com/search?q=print+on+demand`, waits for results, and paginates through all search result pages (following `rel="next"` links). Collects app name + slug from app cards on each page. Saves to `data/apps.json`. Max pages configurable in `src/config.js` (default: 50).
+- **Reviews:** For each app, opens `https://apps.shopify.com/{slug}/reviews`, reads total count, then paginates with `?page=1`, `?page=2`, … Clicks "Show more" buttons to expand truncated reviews, then extracts per-review fields. Saves per-app JSON to `data/reviews/{slug}.json` and updates `data/all_reviews.json` and `data/scraped_app_slugs.json` as it goes.
 - **Output:** Writes `data/all_reviews.csv` and `data/all_reviews.json` when the run finishes (or when resuming, from the combined checkpoint).
 - **Rate limiting:** 3–5 second random delay between page requests.
 - **Retries:** Up to 3 retries with exponential backoff on failures.
