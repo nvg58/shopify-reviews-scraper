@@ -46,7 +46,7 @@ node src/index.js --discover --no-resume
 
 ## Behavior
 
-- **Discovery:** Opens `https://apps.shopify.com/search?q=print+on+demand`, waits for results, and paginates through all search result pages (following `rel="next"` links). Collects app name + slug from app cards on each page. Saves to `data/apps.json`. Max pages configurable in `src/config.js` (default: 50).
+- **Discovery:** Opens `https://apps.shopify.com/search?q=print+on+demand`, waits for results, and paginates through all search result pages (following `rel="next"` links). Collects app **name**, **slug**, **short description**, and **review count** from app cards. Automatically filters out apps with: (1) no reviews, or (2) names containing "Drop Shipping", "Dropshipping", "Personalizer", "Dropship", or "Product Designer". Saves to `data/apps.json`. Max pages configurable in `src/config.js` (default: 50).
 - **Reviews:** For each app, opens `https://apps.shopify.com/{slug}/reviews`, reads total count, then paginates with `?page=1`, `?page=2`, … Clicks "Show more" buttons to expand truncated reviews, then extracts per-review fields. Saves per-app JSON to `data/reviews/{slug}.json` and updates `data/all_reviews.json` and `data/scraped_app_slugs.json` as it goes.
 - **Output:** Writes `data/all_reviews.csv` and `data/all_reviews.json` when the run finishes (or when resuming, from the combined checkpoint).
 - **Rate limiting:** 3–5 second random delay between page requests.
@@ -72,7 +72,7 @@ node src/index.js --discover --no-resume
 
 ```
 data/
-  apps.json           # Discovered apps (checkpoint)
+  apps.json           # Discovered apps with name, slug, description, review_count
   scraped_app_slugs.json  # Slugs already scraped (resume)
   all_reviews.json   # Combined reviews
   all_reviews.csv    # Combined CSV

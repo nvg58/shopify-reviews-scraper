@@ -5,7 +5,6 @@
 const BASE_URL = 'https://apps.shopify.com';
 
 const SEARCH = {
-  url: (q) => `${BASE_URL}/search?q=${encodeURIComponent(q)}`,
   /** App cards on search/category (data attributes) */
   appCard: '[data-app-card-handle-value]',
   appNameAttr: 'data-app-card-name-value',
